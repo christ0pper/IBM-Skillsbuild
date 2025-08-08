@@ -1,0 +1,383 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output }}",
+        "options": {
+          "systemMessage": "You are a Job Search AI Agent connected to a Telegram bot.\n\nYou have access to:\nscrape → Performs HTTP requests to fetch job data in JSON format from WorkIndia.\n\nThe user’s request text from Telegram is in:\n{{ $json.message.text }}\n\nWorkflow Instructions\n1. Classify Request\n   If request is about job searches → go to step 2.\n   If not → send this message to Telegram:\n   \"This request is not job-related.\" and stop execution.\n\n2. Scrape Job Listings\n   Use scrape tool.\n   Target: WorkIndia search endpoint.\n   Pass parameters from the Telegram message: location, job type, keywords.\n   Expect a JSON array with fields: title, place, contact, salary, date.\n\n3. Filter & Select Data\n   Keep only results matching the user request.\n   Keep only: title, place, contact, salary, date.\n   Limit output to top 10 results.\n\n4. Format the Output for Telegram\n   If results exist → format in clean, readable Markdown:\n\n   **Job Listings for Your Request**\n   1. **Title:** [Job Title]  \n      **Place:** [Job Location]  \n      **Contact:** [Contact Info]  \n      **Salary:** [Salary Details]  \n      **Date:** [DD MMM YYYY]\n\n   - Repeat numbering for each job in order.\n   - Convert date from ISO to DD MMM YYYY (e.g., 2025-08-08T07:34:20Z → 08 Aug 2025).\n   - Preserve spacing and bold text exactly as shown.\n\n   If no jobs found → send:\n   \"No job listings found matching your request.\"\n\n5. Send to Telegram\n   Send the formatted message back to the Telegram chat that sent the request.\n\nRules:\n- Always call scrape to get jobs.\n- No fake data — only use scraped results.\n- Maintain numbering and Markdown formatting exactly.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        704,
+        -192
+      ],
+      "id": "781e97ca-8801-4866-b3ed-f578bb13ec43",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -768,
+        -208
+      ],
+      "id": "f8190ca3-d218-4e31-9a85-c34ec29a52d5",
+      "name": "Telegram Trigger",
+      "webhookId": "cd78bbfc-f005-43a8-b6ac-0ef55e626a2f",
+      "credentials": {
+        "telegramApi": {
+          "id": "SO3Otvr89eUGAiVo",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1c3ff13d-bf05-407b-9dbc-bbadf949d941",
+                    "leftValue": "={{ $json.isVoice }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Is Voice"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3036daea-5c1d-434f-a45f-778e418504f7",
+                    "leftValue": "={{ $json.isVoice }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Is Not Voice"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -320,
+        -208
+      ],
+      "id": "10b6cae0-90ab-452c-aa33-af7a78870768",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $('Telegram Trigger').item.json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -80,
+        -496
+      ],
+      "id": "7c3c3013-4abd-483e-8e06-c39214501971",
+      "name": "Telegram",
+      "webhookId": "fe409271-5ec5-4918-8788-31a372ad0261",
+      "credentials": {
+        "telegramApi": {
+          "id": "SO3Otvr89eUGAiVo",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        176,
+        -496
+      ],
+      "id": "3918c10c-6fd3-46b9-967f-bf4d90738403",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "SGbFpIX8I5M5lZDd",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9ed9ddff-6196-42e4-9102-324604bc39cb",
+              "name": "isVoice",
+              "value": "={{ !!$json.message.voice }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -544,
+        -208
+      ],
+      "id": "070be888-2c69-4a25-9e8a-5abac749b909",
+      "name": "Is Voice?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "58a2e201-ea7e-458c-bf9d-dc80b191936c",
+              "name": "output",
+              "value": "={{ $json.text }}{{ $('Telegram Trigger').item.json.message.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        -208
+      ],
+      "id": "7c621de7-06e0-4338-abee-1aea7070d5e5",
+      "name": "Agent Input"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $('AI Agent').item.json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        -192
+      ],
+      "id": "b47d1ccd-c853-4885-b85e-272429fcc6c1",
+      "name": "Telegram1",
+      "webhookId": "0047b4fc-5dcb-4031-885e-104a86077795",
+      "credentials": {
+        "telegramApi": {
+          "id": "SO3Otvr89eUGAiVo",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        48
+      ],
+      "id": "72da1940-5fd7-404d-8dbb-0eb08b6e6189",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "YsSAiReynRROed9c",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.workindia.in/jobs-in-kochi/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        848,
+        176
+      ],
+      "id": "236871e1-f497-41e6-8493-4ca2bbf80964",
+      "name": "Scrape"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Voice?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agent Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Agent Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Voice?": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent Input": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Telegram1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c31a6e9c-8f67-4aff-9c2b-d75be226f0d2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f96a7b65a204f9734b606b8ddccb8075c3a2b83855e477bf00586221298e1d62"
+  },
+  "id": "1kt8wZSvIiak2Iui",
+  "tags": []
+}
